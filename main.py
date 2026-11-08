@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import curses
-import pyperclip
 import sys
+
+import pyperclip
 
 glyphs = {
     "nf-cod-account": "eb99",
@@ -13152,7 +13153,9 @@ def add_results(
                 " " + (lines[i] if i < len(lines) else "") + " ",
                 curses.A_REVERSE,
             )
-            scr.addstr(("  " + results[i][2] if i < len(lines) else ""), curses.A_DIM)
+            scr.addstr(("  U+" + results[i][2] if i < len(lines) else ""), curses.A_DIM)
+            if results[i][1].startswith("nfold-"):
+                scr.addstr(" - REMOVED", curses.A_BOLD)
         else:  # don't highlight
             scr.addstr(y_coord, 5, lines[i] if i < len(lines) else "")
 
@@ -13162,6 +13165,8 @@ def main(stdscr: curses.window):
     selected_index = 0
     search_term = ""
     last_search_term = ""
+    results: list[list[str]] = []
+
     global exit_message
     global error_message
     global exit_status
@@ -13171,9 +13176,16 @@ def main(stdscr: curses.window):
 
         height, width = stdscr.getmaxyx()
 
-        results: list[list[str]] = search_for(search_term)
+        if last_search_term != search_term:
+            results: list[list[str]] = search_for(search_term)
+            last_search_term = search_term
+
         if len(results) == 0:
             selected_index = None
+        elif selected_index is None:
+            selected_index = 0
+        elif selected_index >= len(results):
+            selected_index = len(results) - 1
         add_results(stdscr, height, width, results, selected_index)
 
         # Add `search_term` after results so that cursor appears right after string
@@ -13206,7 +13218,7 @@ If you are on Linux, perhaps try installing `wl-clipboard`|`xclip`|`xcel`"""
 
                 running = False
                 exit_message = (
-                    f"{selected_result[0]}  {selected_result[2]} {selected_result[1]}"
+                    f"{selected_result[0]}  U+{selected_result[2]} {selected_result[1]}"
                 )
 
             elif input_char == curses.KEY_BACKSPACE:
