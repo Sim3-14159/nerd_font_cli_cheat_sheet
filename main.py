@@ -13102,16 +13102,27 @@ glyphs = {
 
 
 def search_for(term: str) -> list[str]:
+    """
+    Search for `term` in the glyphs.
+    """
+    term = term.lower()
     items: list[str] = []
-    for name in glyphs:
+    for name, value in glyphs.items():
         if term in name:
-            items.append(glyphs[name] + name)
+            items.append(chr(int(value, 16)) + "  " + name)
     return items
 
 
 def add_results(
-    scr: curses.window, height: int, width: int, results: list[str]
+    scr: curses.window,
+    height: int,
+    width: int,
+    results: list[str],
+    selected: int | None = None,
 ) -> None:
+    """
+    Show the search results in the window, highlighting `selected`.
+    """
     for i, y_coord in enumerate(range(5, height - 2, 2)):
         scr.addstr(y_coord, 5, results[i] if i < len(results) else "")
 
@@ -13146,9 +13157,11 @@ def main(stdscr: curses.window):
 
         try:
             input_char = stdscr.getch()
-            if input_char != curses.KEY_BACKSPACE:
+            # ord(" ") <= input_char <= ord("~")
+            # because after ~ chars are unprintable
+            if 32 <= input_char <= 126:
                 search_term += chr(input_char)
-            else:
+            elif input_char == curses.KEY_BACKSPACE:
                 search_term = search_term[:-1]
         except KeyboardInterrupt:
             sys.exit(0)
