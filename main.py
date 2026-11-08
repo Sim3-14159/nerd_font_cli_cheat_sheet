@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import curses
+import pyperclip
 import sys
 
 glyphs = {
@@ -13101,50 +13102,63 @@ glyphs = {
 }
 
 
-def search_for(term: str) -> list[str]:
+def search_for(term: str) -> list[list[str]]:
     """
     Search for `term` in the glyphs.
     """
     term = term.lower()
-    items: list[str] = []
+    items: list[list[str]] = []
     for name, value in glyphs.items():
         if term in name:
-            items.append(chr(int(value, 16)) + "  " + name)
+            items.append([chr(int(value, 16)), name, value])
     return items
+
+
+def results_range(windowheight: int):
+    return range(5, windowheight - 2, 2)
 
 
 def add_results(
     scr: curses.window,
     height: int,
     width: int,
-    results: list[str],
+    results: list[list[str]],
     selected: int | None = None,
 ) -> None:
     """
     Show the search results in the window, highlighting `selected`.
     """
-    for i, y_coord in enumerate(range(5, height - 2, 2)):
-        scr.addstr(y_coord, 5, results[i] if i < len(results) else "")
+    lines = [f"{item[0]}  {item[1]}" for item in results]
+    for i, y_coord in enumerate(results_range(height)):
+        if i == selected:  # highlight
+            scr.addstr(
+                y_coord,
+                4,
+                " " + (lines[i] if i < len(lines) else "") + " ",
+                curses.A_REVERSE,
+            )
+            scr.addstr(("  " + results[i][2] if i < len(lines) else ""), curses.A_DIM)
+        else:  # don't highlight
+            scr.addstr(y_coord, 5, lines[i] if i < len(lines) else "")
 
 
 def main(stdscr: curses.window):
     running: bool = True
+    selected_index = 0
     search_term = ""
+    global exit_message
+    global error_message
+    global exit_status
+
     while running:
         stdscr.clear()
 
         height, width = stdscr.getmaxyx()
 
-        # if curses.has_colors():
-        #     curses.start_color()
-        #     # ID, Foreground, Background
-        #     curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        #     GREEN_BLACK = curses.color_pair(1)
-        # else:
-        #     GREEN_BLACK = curses.A_NORMAL
-
-        # 4. Draw a string at y=2, x=5 with bold and color attributes
-        add_results(stdscr, height, width, search_for(search_term))
+        results: list[list[str]] = search_for(search_term)
+        if len(results) == 0:
+            selected_index = None
+        add_results(stdscr, height, width, results, selected_index)
 
         # Add `search_term` after results so that cursor appears right after string
         stdscr.addstr(2, 5, "> ", curses.A_BOLD)
@@ -13158,14 +13172,52 @@ def main(stdscr: curses.window):
         try:
             input_char = stdscr.getch()
             # ord(" ") <= input_char <= ord("~")
-            # because after ~ chars are unprintable
+            # because after "~", chars are unprintable
             if 32 <= input_char <= 126:
                 search_term += chr(input_char)
-            elif input_char == curses.KEY_BACKSPACE:
-                search_term = search_term[:-1]
-        except KeyboardInterrupt:
-            sys.exit(0)
 
+            # 10 == ord("\n")
+            elif input_char == curses.KEY_ENTER or input_char == 10:
+                if selected_index is None:
+                    continue
+                selected_result = results[selected_index]
+                try:
+                    pyperclip.copy(selected_result[0])
+                except pyperclip.PyperclipException:
+                    error_message = f"""Cannot copy {selected_result[1]} to clipboard.
+If you are on Linux, perhaps try installing `wl-clipboard`|`xclip`|`xcel`"""
+                    exit_status = 1
+
+                running = False
+                exit_message = (
+                    f"{selected_result[0]}  {selected_result[2]} {selected_result[1]}"
+                )
+
+            elif input_char == curses.KEY_BACKSPACE:
+                # Slices don't throw errors; no problem indexing even if it == ""
+                search_term = search_term[:-1]
+
+            elif input_char == curses.KEY_DOWN:
+                selected_index = selected_index + 1 if selected_index is not None else 0
+                selected_index = min(selected_index, len(results_range(height)))
+
+            elif input_char == curses.KEY_UP:
+                selected_index = selected_index - 1 if selected_index is not None else 0
+                selected_index = max(0, selected_index)
+
+        except KeyboardInterrupt:
+            running = False
+
+
+exit_message = ""
+error_message = ""
+exit_status = 0
 
 if __name__ == "__main__":
     curses.wrapper(main)
+    if exit_message:
+        print(exit_message)
+    if error_message:
+        print(sys.stderr, error_message)
+
+    sys.exit(exit_status)
