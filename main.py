@@ -13119,10 +13119,13 @@ def search_for(term: str) -> list[list[str]]:
                     nummatches += 1
         itemratings.append(([chr(int(value, 16)), name, value], nummatches))
 
-    def sort_items(itemrating):
-        return itemrating[1]
-
-    items = [x[0] for x in sorted(itemratings, key=sort_items)]
+    for i in range(len(itemratings) - 1, -1, -1):
+        if itemratings[i][1] == 0:
+            del itemratings[i]
+    items = [
+        x[0]
+        for x in sorted(itemratings, key=lambda itemrating: itemrating[1], reverse=True)
+    ]
     return items
 
 
@@ -13158,6 +13161,7 @@ def main(stdscr: curses.window):
     running: bool = True
     selected_index = 0
     search_term = ""
+    last_search_term = ""
     global exit_message
     global error_message
     global exit_status
@@ -13211,11 +13215,13 @@ If you are on Linux, perhaps try installing `wl-clipboard`|`xclip`|`xcel`"""
 
             elif input_char == curses.KEY_DOWN:
                 selected_index = selected_index + 1 if selected_index is not None else 0
-                selected_index %= len(results_range(height))
+                if wraplen := min(len(results_range(height)), len(results)):
+                    selected_index %= wraplen
 
             elif input_char == curses.KEY_UP:
                 selected_index = selected_index - 1 if selected_index is not None else 0
-                selected_index %= len(results_range(height))
+                if wraplen := min(len(results_range(height)), len(results)):
+                    selected_index %= wraplen
 
         except KeyboardInterrupt:
             running = False
