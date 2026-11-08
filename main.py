@@ -13106,11 +13106,23 @@ def search_for(term: str) -> list[list[str]]:
     """
     Search for `term` in the glyphs.
     """
-    term = term.lower()
+    termtoks = term.lower().split()
     items: list[list[str]] = []
+    # [0] is value, [1] is rating
+    itemratings: list[tuple[list[str], int]] = []
+
     for name, value in glyphs.items():
-        if term in name:
-            items.append([chr(int(value, 16)), name, value])
+        nummatches = 0
+        for termtok in termtoks:
+            for nametok in name.replace("-", "_").split("_"):
+                if termtok in nametok:
+                    nummatches += 1
+        itemratings.append(([chr(int(value, 16)), name, value], nummatches))
+
+    def sort_items(itemrating):
+        return itemrating[1]
+
+    items = [x[0] for x in sorted(itemratings, key=sort_items)]
     return items
 
 
@@ -13199,11 +13211,11 @@ If you are on Linux, perhaps try installing `wl-clipboard`|`xclip`|`xcel`"""
 
             elif input_char == curses.KEY_DOWN:
                 selected_index = selected_index + 1 if selected_index is not None else 0
-                selected_index = min(selected_index, len(results_range(height)))
+                selected_index %= len(results_range(height))
 
             elif input_char == curses.KEY_UP:
                 selected_index = selected_index - 1 if selected_index is not None else 0
-                selected_index = max(0, selected_index)
+                selected_index %= len(results_range(height))
 
         except KeyboardInterrupt:
             running = False
