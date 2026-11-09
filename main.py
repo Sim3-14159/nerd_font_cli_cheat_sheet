@@ -5692,7 +5692,6 @@ glyphs = {
     "nf-md-dots_vertical_circle_outline": "f0b8e",
     "nf-md-download": "f01da",
     "nf-md-download_box": "f1462",
-    "nf-md-download_box_outline": "f1463",
     "nf-md-download_circle": "f1464",
     "nf-md-download_circle_outline": "f1465",
     "nf-md-download_lock": "f1320",
@@ -13149,15 +13148,18 @@ def add_results(
         if i == selected:  # highlight
             scr.addstr(
                 y_coord,
-                4,
+                3,
                 " " + (lines[i] if i < len(lines) else "") + " ",
                 curses.A_REVERSE,
             )
-            scr.addstr(("  U+" + results[i][2] if i < len(lines) else ""), curses.A_DIM)
-            if results[i][1].startswith("nfold-"):
-                scr.addstr(" - REMOVED", curses.A_BOLD)
+            scr.addstr((" U+" + results[i][2] if i < len(lines) else ""), curses.A_DIM)
+
         else:  # don't highlight
-            scr.addstr(y_coord, 5, lines[i] if i < len(lines) else "")
+            scr.addstr(y_coord, 4, lines[i] if i < len(lines) else "")
+            scr.addstr(("  U+" + results[i][2] if i < len(lines) else ""), curses.A_DIM)
+
+        if i < len(results) and results[i][1].startswith("nfold-"):
+            scr.addstr(" - REMOVED", curses.color_pair(1))
 
 
 def main(stdscr: curses.window):
@@ -13171,33 +13173,35 @@ def main(stdscr: curses.window):
     global error_message
     global exit_status
 
-    while running:
-        stdscr.clear()
+    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
 
-        height, width = stdscr.getmaxyx()
+    try:
+        while running:
+            stdscr.clear()
 
-        if last_search_term != search_term:
-            results: list[list[str]] = search_for(search_term)
-            last_search_term = search_term
+            height, width = stdscr.getmaxyx()
 
-        if len(results) == 0:
-            selected_index = None
-        elif selected_index is None:
-            selected_index = 0
-        elif selected_index >= len(results):
-            selected_index = len(results) - 1
-        add_results(stdscr, height, width, results, selected_index)
+            if last_search_term != search_term:
+                results: list[list[str]] = search_for(search_term)
+                last_search_term = search_term
 
-        # Add `search_term` after results so that cursor appears right after string
-        stdscr.addstr(2, 5, "> ", curses.A_BOLD)
-        if search_term:
-            stdscr.addstr(2, 7, search_term, curses.A_BOLD)
-        else:
-            stdscr.addstr(2, 7, "Search Nerd Font glyphs...", curses.A_DIM)
-            stdscr.move(2, 7)
-        stdscr.refresh()
+            if len(results) == 0:
+                selected_index = None
+            elif selected_index is None:
+                selected_index = 0
+            elif selected_index >= len(results):
+                selected_index = len(results) - 1
+            add_results(stdscr, height, width, results, selected_index)
 
-        try:
+            # Add `search_term` after results so that cursor appears right after string
+            stdscr.addstr(2, 4, "> ", curses.A_BOLD)
+            if search_term:
+                stdscr.addstr(2, 6, search_term, curses.A_BOLD)
+            else:
+                stdscr.addstr(2, 6, "Search Nerd Font glyphs...", curses.A_DIM)
+                stdscr.move(2, 6)
+            stdscr.refresh()
+
             input_char = stdscr.getch()
             # ord(" ") <= input_char <= ord("~")
             # because after "~", chars are unprintable
@@ -13235,8 +13239,8 @@ If you are on Linux, perhaps try installing `wl-clipboard`|`xclip`|`xcel`"""
                 if wraplen := min(len(results_range(height)), len(results)):
                     selected_index %= wraplen
 
-        except KeyboardInterrupt:
-            running = False
+    except KeyboardInterrupt:
+        running = False
 
 
 exit_message = ""
