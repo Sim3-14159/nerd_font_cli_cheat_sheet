@@ -13159,7 +13159,7 @@ def add_results(
             scr.addstr(("  U+" + results[i][2] if i < len(lines) else ""), curses.A_DIM)
 
         if i < len(results) and results[i][1].startswith("nfold-"):
-            scr.addstr(" - REMOVED", curses.color_pair(1))
+            scr.addstr(" - REMOVED", curses.color_pair(1) | curses.A_BOLD)
 
 
 def main(stdscr: curses.window):
