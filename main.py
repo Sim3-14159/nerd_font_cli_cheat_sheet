@@ -13112,12 +13112,17 @@ def search_for(term: str) -> list[list[str]]:
     itemratings: list[tuple[list[str], int]] = []
 
     for name, value in glyphs.items():
-        nummatches = 0
+        rating = 0
         for termtok in termtoks:
             for nametok in name.replace("-", "_").split("_"):
                 if termtok in nametok:
-                    nummatches += 1
-        itemratings.append(([chr(int(value, 16)), name, value], nummatches))
+                    rating += 1
+                if nametok.startswith(termtok):
+                    rating += 1
+                if nametok == termtok:
+                    rating += 1
+
+        itemratings.append(([chr(int(value, 16)), name, value], rating))
 
     for i in range(len(itemratings) - 1, -1, -1):
         if itemratings[i][1] == 0:
